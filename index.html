@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>எலுமிச்சை தொழில் கணக்கு</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#F5F1DC; --paper-line:#DED5A8; --margin-red:#B23A1E;
+    --green-deep:#2F5233; --green-mid:#5B7F4A; --lemon:#EFC94C;
+    --ink:#2A2A20; --ink-soft:#6B6650; --due:#B23A1E; --clear:#3D6B3F;
+    --blue:#2F6690; --blue-bg:#E4EEF3; --card-bg:#FFFDF6;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--green-deep);font-family:'Noto Sans Tamil','Noto Sans',sans-serif;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .wrap{max-width:820px;margin:0 auto;min-height:100vh;background:var(--paper);padding-bottom:76px;}
+  button{cursor:pointer;font-family:'Noto Sans Tamil',sans-serif;}
+  .hidden{display:none !important;}
+
+  header{background:var(--green-deep);padding:24px 24px 30px;position:relative;}
+  header h1{font-family:'Baloo Thambi 2',sans-serif;color:var(--lemon);font-size:26px;margin:0 0 4px;font-weight:700;display:flex;align-items:center;gap:10px;}
+  header p{color:#D8E3CE;margin:0;font-size:13.5px;max-width:52ch;}
+  .lemon-icon{width:30px;height:30px;flex:none;}
+
+  .company-bar{margin:-18px 16px 0;background:var(--card-bg);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.16);padding:12px 16px;position:relative;z-index:2;font-size:13px;}
+  .company-bar .row1{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .company-bar .biz{font-weight:700;font-size:14.5px;}
+  .company-bar .meta{color:var(--ink-soft);font-size:12px;}
+  .company-bar button.edit{background:none;border:none;color:var(--green-deep);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:0;}
+  .company-form{display:none;margin-top:10px;gap:8px;flex-direction:column;}
+  .company-form.show{display:flex;}
+  .company-form input{border:1px solid var(--paper-line);border-radius:6px;padding:8px 10px;font-family:inherit;font-size:13.5px;}
+  .save-btn{align-self:flex-start;background:var(--green-deep);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-family:inherit;font-weight:600;cursor:pointer;}
+
+  .toolbar{margin:12px 16px 0;display:flex;gap:8px;flex-wrap:wrap;}
+  .toolbar button{background:var(--card-bg);color:var(--green-deep);border:1.3px solid var(--paper-line);border-radius:8px;padding:8px 12px;font-weight:600;font-size:12.5px;}
+  .toolbar button:hover{border-color:var(--green-deep);}
+  .toolbar input[type="file"]{display:none;}
+
+  /* Dashboard cards */
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 16px 0;}
+  .card{background:var(--card-bg);border-radius:10px;padding:14px 14px;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+  .card .clabel{font-size:12px;color:var(--ink-soft);margin-bottom:4px;}
+  .card .cval{font-family:'Baloo Thambi 2',sans-serif;font-size:22px;font-weight:700;}
+  .card.sales .cval{color:var(--clear);}
+  .card.expense .cval{color:var(--due);}
+  .card.cash .cval{color:var(--blue);}
+  .card.stock .cval{color:var(--green-deep);}
+
+  .section-title{font-size:15px;font-weight:700;color:var(--green-deep);margin:20px 16px 8px;}
+  .feed{margin:0 16px;background:var(--card-bg);border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden;}
+  .feed-row{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--paper-line);font-size:13.5px;gap:10px;}
+  .feed-row:last-child{border-bottom:none;}
+  .feed-row .flabel{color:var(--ink-soft);}
+  .feed-row .flabel b{color:var(--ink);}
+  .feed-empty{padding:20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
+
+  /* Ledger (shared for sales & purchase) */
+  .ledger{margin:16px 16px 30px;background:var(--card-bg);border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.08);position:relative;padding-left:32px;}
+  .ledger::before{content:"";position:absolute;left:22px;top:0;bottom:0;width:1.5px;background:var(--margin-red);opacity:.55;}
+  .add-row{display:flex;gap:8px;padding:16px 16px 14px 0;border-bottom:1.5px solid var(--paper-line);flex-wrap:wrap;}
+  .add-row input{flex:1;min-width:110px;border:none;border-bottom:1.5px solid var(--ink-soft);background:transparent;padding:8px 4px;font-size:14.5px;font-family:inherit;color:var(--ink);}
+  .add-row input:focus{outline:none;border-bottom-color:var(--green-deep);}
+  .btn{background:var(--green-deep);color:#fff;border:none;border-radius:6px;padding:9px 15px;font-weight:600;font-size:13.5px;}
+  .btn:hover{background:var(--green-mid);}
+  .btn-outline{background:transparent;color:var(--green-deep);border:1.3px solid var(--green-deep);border-radius:6px;padding:8px 13px;font-weight:600;font-size:13px;}
+  .btn-outline:hover{background:rgba(47,82,51,.08);}
+  .btn-small{background:var(--green-deep);color:#fff;border:none;border-radius:5px;padding:6px 10px;font-size:12px;font-weight:600;}
+  .btn-link{background:none;border:none;color:var(--green-deep);font-size:12px;text-decoration:underline;padding:0;}
+  .btn-del{background:none;border:none;color:var(--due);font-size:15px;padding:0 4px;line-height:1;}
+
+  .col-headers{display:grid;grid-template-columns:1fr 82px 82px 82px 18px;gap:6px;padding:10px 16px 8px 0;font-size:11.5px;color:var(--ink-soft);border-bottom:1px solid var(--paper-line);}
+  .col-headers span:not(:first-child){text-align:right;}
+  .party{border-bottom:1px solid var(--paper-line);}
+  .party:last-child{border-bottom:none;}
+  .party-row{display:grid;grid-template-columns:1fr 82px 82px 82px 18px;gap:6px;align-items:center;padding:13px 16px 13px 0;cursor:pointer;}
+  .party-row:hover{background:rgba(91,127,74,.06);}
+  .party-name{font-size:15px;font-weight:600;}
+  .party-row .num{text-align:right;font-size:13px;}
+  .party-row .num.balance{font-weight:700;}
+  .balance.due{color:var(--due);} .balance.clear{color:var(--clear);}
+  .chevron{width:9px;height:9px;border-right:2px solid var(--ink-soft);border-bottom:2px solid var(--ink-soft);transform:rotate(-45deg);transition:transform .18s ease;justify-self:center;}
+  .party.open .chevron{transform:rotate(45deg);}
+  .detail{display:none;padding:0 16px 20px 0;}
+  .party.open .detail{display:block;}
+
+  .contact-line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;font-size:12.5px;color:var(--ink-soft);border-bottom:1px dashed var(--paper-line);margin-bottom:6px;}
+  .contact-form{display:none;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .contact-form.show{display:flex;}
+  .contact-form input{border:1px solid var(--paper-line);background:#fff;border-radius:6px;padding:7px 9px;font-size:13px;font-family:inherit;flex:1;min-width:130px;}
+
+  .entries{margin:0 0 12px;}
+  .entry{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;border-bottom:1px dashed var(--paper-line);gap:8px;}
+  .entry .left{color:var(--ink-soft);flex:1;}
+  .entry .left .note{color:var(--ink);}
+  .entry .right{display:flex;align-items:center;gap:8px;flex:none;}
+  .entry .amt.debit{color:var(--due);} .entry .amt.credit{color:var(--clear);}
+  .no-entries{color:var(--ink-soft);font-size:12.5px;padding:8px 0;}
+  .action-row{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
+
+  .pay-form{display:none;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;}
+  .pay-form.show{display:flex;}
+  .pay-form input{border:1px solid var(--paper-line);background:#fff;border-radius:6px;padding:8px 9px;font-size:13.5px;font-family:inherit;}
+  .pay-form input[type="number"]{width:100px;}
+  .quick-amts{display:flex;gap:5px;flex-wrap:wrap;}
+  .quick-amts button{background:#F2EEDA;border:1px solid var(--paper-line);border-radius:5px;padding:5px 8px;font-size:11.5px;color:var(--ink);}
+
+  .invoice-builder{display:none;margin-top:14px;background:#fff;border:1px solid var(--paper-line);border-radius:8px;padding:14px 14px 16px;}
+  .invoice-builder.show{display:block;}
+  .invoice-builder h4{margin:0 0 10px;font-size:13.5px;color:var(--green-deep);font-weight:700;}
+  .ib-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+  .item-row{margin-bottom:6px;}
+  .item-row input, .item-row select{border:1px solid var(--paper-line);border-radius:6px;padding:6px 7px;font-size:12.5px;font-family:inherit;}
+  .item-row .f-quality{width:66px;} .item-row .f-product{width:100px;}
+  .item-row .f-weight{width:64px;} .item-row .f-unit{width:60px;} .item-row .f-rate{width:76px;}
+  .item-row .row-amt{width:76px;text-align:right;font-weight:600;font-size:13px;}
+  .charge-row{margin-bottom:6px;}
+  .charge-row .f-charge-desc{flex:1;min-width:130px;} .charge-row .f-charge-amt{width:90px;}
+  .row-x{background:none;border:none;color:var(--due);font-size:16px;font-weight:700;padding:0 4px;}
+  .ib-sub-actions{display:flex;gap:8px;margin:8px 0 14px;flex-wrap:wrap;}
+  .ib-quick{background:#F2EEDA;border:1px solid var(--paper-line);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--ink);}
+  .ib-totals{display:flex;flex-direction:column;gap:5px;align-items:flex-end;margin:12px 0;font-size:13.5px;}
+  .ib-totals .discount-row{display:flex;align-items:center;gap:8px;}
+  .ib-totals .discount-row input{width:85px;border:1px solid var(--paper-line);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:13px;}
+  .ib-totals .total-line{font-weight:700;font-size:16px;color:var(--green-deep);}
+  .field-label{font-size:11.5px;color:var(--ink-soft);}
+
+  .empty{padding:36px 16px 42px 0;text-align:left;}
+  .empty p{color:var(--ink-soft);font-size:14px;line-height:1.6;max-width:42ch;}
+
+  /* Cash book */
+  .expense-quick{display:flex;gap:8px;flex-wrap:wrap;margin:0 16px 12px;}
+  .expense-quick button{background:var(--card-bg);border:1.3px solid var(--paper-line);border-radius:8px;padding:10px 12px;font-size:13px;font-weight:600;color:var(--ink);min-height:44px;}
+  .expense-quick button:hover{border-color:var(--due);}
+  .expense-form{display:none;margin:0 16px 14px;background:var(--card-bg);border-radius:8px;padding:12px 14px;gap:8px;flex-wrap:wrap;align-items:center;}
+  .expense-form.show{display:flex;}
+  .expense-form input{border:1px solid var(--paper-line);background:#fff;border-radius:6px;padding:8px 9px;font-size:13.5px;font-family:inherit;}
+  .expense-form input[type="number"]{width:100px;}
+  .expense-list{margin:0 16px 24px;background:var(--card-bg);border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden;}
+
+  .cashsum{margin:12px 16px;background:var(--blue-bg);border-radius:10px;padding:14px 16px;font-size:13.5px;}
+  .cashsum .line{display:flex;justify-content:space-between;padding:3px 0;}
+  .cashsum .line.total{font-weight:700;font-size:16px;color:var(--blue);border-top:1px solid #C4D9E3;margin-top:6px;padding-top:8px;}
+
+  /* Reports */
+  .report-block{margin:0 16px 22px;background:var(--card-bg);border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);padding:14px 16px;}
+  .report-block h3{margin:0 0 10px;font-size:14.5px;color:var(--green-deep);}
+  .report-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px;border-bottom:1px dashed var(--paper-line);}
+  .report-row:last-child{border-bottom:none;}
+  .stock-low{color:var(--due);font-weight:700;}
+  .wastage-form{display:none;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .wastage-form.show{display:flex;}
+  .wastage-form input, .wastage-form select{border:1px solid var(--paper-line);background:#fff;border-radius:6px;padding:7px 9px;font-size:13px;font-family:inherit;}
+
+  /* Tab bar */
+  .tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--green-deep);display:flex;justify-content:space-around;box-shadow:0 -4px 14px rgba(0,0,0,.25);z-index:50;max-width:820px;margin:0 auto;}
+  .tabbtn{flex:1;background:none;border:none;color:#B9CDA9;padding:9px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;min-height:52px;}
+  .tabbtn .ticon{font-size:19px;}
+  .tabbtn.active{color:var(--lemon);}
+
+  footer{text-align:center;padding:10px 20px 20px;color:#D8E3CE;font-size:11.5px;}
+
+  #pdfTemplate{position:fixed;left:-10000px;top:0;width:760px;background:#fff;}
+
+  @media (max-width:480px){
+    .col-headers, .party-row{grid-template-columns:1fr 68px 68px 68px 14px;}
+    header{padding:20px 14px 26px;} header h1{font-size:21px;}
+    .company-bar{margin-left:12px;margin-right:12px;}
+    .ledger{margin:14px 12px 26px;padding-left:24px;} .ledger::before{left:14px;}
+    .cards{margin:14px 12px 0;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>
+      <svg class="lemon-icon" viewBox="0 0 40 40" fill="none">
+        <ellipse cx="20" cy="21" rx="15" ry="12" fill="#EFC94C" stroke="#B99A2A" stroke-width="1.2" transform="rotate(-10 20 21)"/>
+        <path d="M8 15 Q6 10 10 8" stroke="#5B7F4A" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M9 9 Q13 6 16 9" stroke="#5B7F4A" stroke-width="2" stroke-linecap="round" fill="none"/>
+      </svg>
+      எலுமிச்சை தொழில் கணக்கு
+    </h1>
+    <p>வாங்குதல், விற்பனை, இருப்பு, ரொக்கம் — அனைத்தும் ஒரே இடத்தில்.</p>
+  </header>
+
+  <div class="company-bar" id="companyBar">
+    <div class="row1">
+      <div><div class="biz" id="companyName">நிறுவன விவரம் சேர்க்கவும்</div><div class="meta" id="companyMeta"></div></div>
+      <button class="edit" id="companyEditBtn">✎ திருத்து</button>
+    </div>
+    <div class="company-form" id="companyForm">
+      <input type="text" id="cf-name" placeholder="நிறுவனப் பெயர்">
+      <input type="text" id="cf-address" placeholder="முகவரி">
+      <input type="text" id="cf-mobile" placeholder="மொபைல் எண்">
+      <input type="number" id="cf-cash" placeholder="தொடக்க கல்லாப்பெட்டி ரொக்கம் (₹)">
+      <input type="number" id="cf-bank" placeholder="தொடக்க வங்கி/UPI இருப்பு (₹)">
+      <button class="save-btn" id="cf-save">சேமி</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="backupExportBtn">⬇ பேக்அப் பதிவிறக்கு</button>
+    <button id="backupImportBtn">⬆ பேக்அப் மீட்டமை</button>
+    <input type="file" id="backupFileInput" accept="application/json">
+  </div>
+
+  <!-- HOME -->
+  <div class="tab-panel" id="tab-home">
+    <div class="cards">
+      <div class="card sales"><div class="clabel">இன்றைய விற்பனை</div><div class="cval" id="cardSales">₹0</div></div>
+      <div class="card expense"><div class="clabel">இன்றைய செலவு</div><div class="cval" id="cardExpense">₹0</div></div>
+      <div class="card cash"><div class="clabel">கல்லாப்பெட்டி ரொக்கம்</div><div class="cval" id="cardCash">₹0</div></div>
+      <div class="card stock"><div class="clabel">மொத்த இருப்பு</div><div class="cval" id="cardStock">0 கிலோ</div></div>
+    </div>
+    <div class="section-title">சமீபத்திய பரிவர்த்தனைகள்</div>
+    <div class="feed" id="recentFeed"></div>
+  </div>
+
+  <!-- PURCHASE -->
+  <div class="tab-panel hidden" id="tab-purchase">
+    <div class="ledger">
+      <div class="add-row">
+        <input type="text" id="newSupName" placeholder="சப்ளையர் பெயர்" maxlength="60">
+        <input type="text" id="newSupPlace" placeholder="ஊர் (விருப்பம்)" maxlength="80">
+        <input type="text" id="newSupPhone" placeholder="மொபைல் (விருப்பம்)" maxlength="20">
+        <button class="btn" id="addSupplierBtn">சேர்</button>
+      </div>
+      <div id="purchaseListArea"></div>
+    </div>
+  </div>
+
+  <!-- SALES -->
+  <div class="tab-panel hidden" id="tab-sales">
+    <div class="ledger">
+      <div class="add-row">
+        <input type="text" id="newCustName" placeholder="வாடிக்கையாளர் பெயர்" maxlength="60">
+        <input type="text" id="newCustAddr" placeholder="முகவரி (விருப்பம்)" maxlength="120">
+        <input type="text" id="newCustPhone" placeholder="மொபைல் (விருப்பம்)" maxlength="20">
+        <button class="btn" id="addCustomerBtn">சேர்</button>
+      </div>
+      <div id="salesListArea"></div>
+    </div>
+  </div>
+
+  <!-- CASH BOOK -->
+  <div class="tab-panel hidden" id="tab-cash">
+    <div class="cashsum" id="cashSummary"></div>
+    <div class="toolbar" style="margin-top:0;">
+      <button id="openTransferBtn">🏧 வங்கியிலிருந்து கல்லாவுக்கு எடுத்தது</button>
+    </div>
+    <div class="expense-form" id="transferForm">
+      <span style="font-weight:600;">வங்கி → கல்லாப்பெட்டி</span>
+      <input type="date" id="trDate">
+      <input type="number" id="trAmt" placeholder="தொகை" min="0" step="1">
+      <div class="quick-amts" id="trQuickAmts"></div>
+      <button class="btn" id="trSaveBtn">சேமி</button>
+    </div>
+    <div class="section-title">செலவு சேர்க்க</div>
+    <div class="expense-quick">
+      <button data-exp="வண்டி கூலி">🚚 வண்டி கூலி</button>
+      <button data-exp="ஏற்றுதல்/இறக்குதல்">📦 ஏற்றுதல்/இறக்குதல்</button>
+      <button data-exp="சந்தை கட்டணம்">🏪 சந்தை கட்டணம்</button>
+      <button data-exp="உணவு/தேநீர்">🍵 உணவு/தேநீர்</button>
+      <button data-exp="மற்றவை">➕ மற்றவை</button>
+    </div>
+    <div class="expense-form" id="expenseForm">
+      <span id="expLabel" style="font-weight:600;"></span>
+      <input type="date" id="expDate">
+      <input type="number" id="expAmt" placeholder="தொகை" min="0" step="1">
+      <select id="expMode"><option value="காசு">காசு</option><option value="UPI">UPI</option><option value="வங்கி">வங்கி</option></select>
+      <div class="quick-amts" id="expQuickAmts"></div>
+      <button class="btn" id="expSaveBtn">சேமி</button>
+    </div>
+    <div class="section-title">செலவு பட்டியல்</div>
+    <div class="expense-list" id="expenseListArea"></div>
+    <div class="section-title">வங்கி → கல்லா பரிமாற்றங்கள்</div>
+    <div class="expense-list" id="transferListArea"></div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="tab-panel hidden" id="tab-reports">
+    <div class="toolbar" style="margin-top:14px;">
+      <button id="ledgerPdfBtn">📄 அறிக்கை PDF பதிவிறக்கு</button>
+    </div>
+    <div class="report-block">
+      <h3>யார் நமக்கு எவ்வளவு கடன் (வாடிக்கையாளர்)</h3>
+      <div id="repCustDue"></div>
+    </div>
+    <div class="report-block">
+      <h3>நாம் யாருக்கு எவ்வளவு கடன் (சப்ளையர்)</h3>
+      <div id="repSupDue"></div>
+    </div>
+    <div class="report-block">
+      <h3>இருப்பு (Stock)</h3>
+      <div id="repStock"></div>
+      <button class="btn-outline" id="openWastageBtn" style="margin-top:10px;">+ கழிவு பதிவு</button>
+      <div class="wastage-form" id="wastageForm">
+        <input type="text" id="wProduct" placeholder="பொருள்" value="எலுமிச்சை" list="productList">
+        <select id="wQuality"><option value="I">தரம் I</option><option value="II">தரம் II</option></select>
+        <input type="number" id="wWeight" placeholder="எடை" min="0" step="0.1">
+        <input type="text" id="wUnit" placeholder="அலகு" value="கிலோ" list="unitList">
+        <input type="date" id="wDate">
+        <input type="text" id="wNote" placeholder="குறிப்பு (விருப்பம்)">
+        <button class="btn-small" id="wSaveBtn">சேமி</button>
+      </div>
+    </div>
+    <div class="report-block">
+      <h3>இந்த மாத சுருக்கம்</h3>
+      <div id="repMonthly"></div>
+    </div>
+  </div>
+
+  <footer>தரவு உங்கள் கணக்கில் மட்டும் சேமிக்கப்படுகிறது.</footer>
+</div>
+
+<div class="tabbar">
+  <button class="tabbtn active" data-tab="home"><span class="ticon">🏠</span>முகப்பு</button>
+  <button class="tabbtn" data-tab="purchase"><span class="ticon">🛒</span>வாங்குதல்</button>
+  <button class="tabbtn" data-tab="sales"><span class="ticon">💰</span>விற்பனை</button>
+  <button class="tabbtn" data-tab="cash"><span class="ticon">💵</span>கணக்கு</button>
+  <button class="tabbtn" data-tab="reports"><span class="ticon">📊</span>அறிக்கை</button>
+</div>
+
+<div id="pdfTemplate"></div>
+<datalist id="productList"><option value="எலுமிச்சை"><option value="நார்த்தங்காய்"><option value="கிடாரங்காய்"></datalist>
+<datalist id="unitList"><option value="கிலோ"><option value="மூட்டை"><option value="எண்ணிக்கை"><option value="டன்"></datalist>
+
+<script>
+/* ================= STATE ================= */
+let customers = [];     // sales: entries type 'bill'|'payment'
+let invoices = [];      // sales invoices
+let suppliers = [];     // purchase: entries type 'purchase'|'payment'
+let purchaseBills = [];
+let expenses = [];      // {id,date,category,amount,note}
+let wastage = [];       // {id,date,product,quality,weight,unit,note}
+let company = {name:'',address:'',mobile:'',openingCash:0};
+let counters = {sale:1, purchase:1};
+
+/* ================= HELPERS ================= */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmt(n){ return '₹' + Math.round(n||0).toLocaleString('en-IN'); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function dateIN(iso){ if(!iso) return ''; const p=iso.split('-'); return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : iso; }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function monthKey(iso){ return (iso||'').slice(0,7); }
+
+function partyTotals(entries, debitType, creditType){
+  let debit=0, credit=0;
+  entries.forEach(e=>{ if(e.type===debitType) debit+=e.amount; else if(e.type===creditType) credit+=e.amount; });
+  return {debit, credit, balance: debit-credit};
+}
+
+/* ================= STORAGE ================= */
+async function saveAll(){
+  try{
+    await window.storage.set('ls-customers', JSON.stringify(customers), false);
+    await window.storage.set('ls-invoices', JSON.stringify(invoices), false);
+    await window.storage.set('ls-suppliers', JSON.stringify(suppliers), false);
+    await window.storage.set('ls-purchase-bills', JSON.stringify(purchaseBills), false);
+    await window.storage.set('ls-expenses', JSON.stringify(expenses), false);
+    await window.storage.set('ls-wastage', JSON.stringify(wastage), false);
+    await window.storage.set('ls-company', JSON.stringify(company), false);
+    await window.storage.set('ls-counters', JSON.stringify(counters), false);
+  }catch(err){ console.error('save failed', err); }
+}
+async function loadAll(){
+  const get = async (k, fallback) => { try{ const r = await window.storage.get(k,false); return r? JSON.parse(r.value) : fallback; }catch(e){ return fallback; } };
+  customers = await get('ls-customers', []);
+  invoices = await get('ls-invoices', []);
+  suppliers = await get('ls-suppliers', []);
+  purchaseBills = await get('ls-purchase-bills', []);
+  expenses = await get('ls-expenses', []);
+  wastage = await get('ls-wastage', []);
+  company = await get('ls-company', {name:'',address:'',mobile:'',openingCash:0});
+  counters = await get('ls-counters', {sale:1, purchase:1});
+  document.getElementById('expDate').value = todayISO();
+  document.getElementById('wDate').value = todayISO();
+  renderCompanyBar();
+  renderAll();
+}
+
+/* ================= COMPANY BAR ================= */
+function renderCompanyBar(){
+  const nameEl = document.getElementById('companyName');
+  const metaEl = document.getElementById('companyMeta');
+  if(company.name){
+    nameEl.textContent = company.name;
+    metaEl.textContent = [company.address, company.mobile ? 'மொபைல்: '+company.mobile:''].filter(Boolean).join(' · ');
+  }else{
+    nameEl.textContent = 'நிறுவன விவரம் சேர்க்கவும்';
+    metaEl.textContent = 'இன்வாய்ஸ் தலைப்பில் காட்ட கடை பெயர், முகவரி, மொபைல் சேர்க்கவும்.';
+  }
+  document.getElementById('cf-name').value = company.name||'';
+  document.getElementById('cf-address').value = company.address||'';
+  document.getElementById('cf-mobile').value = company.mobile||'';
+  document.getElementById('cf-cash').value = company.openingCash||0;
+}
+document.getElementById('companyEditBtn').addEventListener('click', ()=> document.getElementById('companyForm').classList.toggle('show'));
+document.getElementById('cf-save').addEventListener('click', async ()=>{
+  company = {
+    name: document.getElementById('cf-name').value.trim(),
+    address: document.getElementById('cf-address').value.trim(),
+    mobile: document.getElementById('cf-mobile').value.trim(),
+    openingCash: parseFloat(document.getElementById('cf-cash').value)||0
+  };
+  await saveAll(); renderCompanyBar(); renderAll();
+  document.getElementById('companyForm').classList.remove('show');
+});
+
+/* ================= TAB SWITCH ================= */
+document.querySelectorAll('.tabbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('hidden'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.getAttribute('data-tab')).classList.remove('hidden');
+  });
+});
+
+/* ================= SHARED: ITEM/CHARGE ROW BUILDER ================= */
+function addItemRow(id, prefill){
+  const container = document.getElementById('items-'+id);
+  const row = document.createElement('div');
+  row.className = 'ib-row item-row';
+  const p = prefill || {};
+  const quality = p.quality || 'I';
+  const product = p.product!==undefined ? p.product : 'எலுமிச்சை';
+  const weight = p.weight!==undefined ? p.weight : '';
+  const unit = p.unit!==undefined ? p.unit : 'கிலோ';
+  const rate = p.rate!==undefined ? p.rate : '';
+  row.innerHTML = `
+    <select class="f-quality">
+      <option value="I" ${quality==='I'?'selected':''}>தரம் I</option>
+      <option value="II" ${quality==='II'?'selected':''}>தரம் II</option>
+    </select>
+    <input type="text" class="f-product" placeholder="பொருள்" value="${escapeHtml(product)}" list="productList">
+    <input type="number" class="f-weight" placeholder="எடை" min="0" step="0.1" value="${weight}">
+    <input type="text" class="f-unit" placeholder="அலகு" value="${escapeHtml(unit)}" list="unitList">
+    <input type="number" class="f-rate" placeholder="விலை/அலகு" min="0" step="1" value="${rate}">
+    <span class="row-amt">${fmt((parseFloat(weight)||0)*(parseFloat(rate)||0))}</span>
+    <button class="row-x" title="நீக்கு">×</button>
+  `;
+  container.appendChild(row);
+  row.querySelectorAll('.f-weight, .f-rate').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const w = parseFloat(row.querySelector('.f-weight').value)||0;
+      const r = parseFloat(row.querySelector('.f-rate').value)||0;
+      row.querySelector('.row-amt').textContent = fmt(w*r);
+      recomputeTotals(id);
+    });
+  });
+  row.querySelector('.row-x').addEventListener('click', ()=>{ row.remove(); recomputeTotals(id); });
+}
+function addChargeRow(id, presetDesc, presetAmount){
+  const container = document.getElementById('charges-'+id);
+  const row = document.createElement('div');
+  row.className = 'ib-row charge-row';
+  const amtVal = (presetAmount!==undefined && presetAmount!==null) ? presetAmount : '';
+  row.innerHTML = `
+    <input type="text" class="f-charge-desc" placeholder="கட்டணம் விவரம்" value="${escapeHtml(presetDesc||'')}">
+    <input type="number" class="f-charge-amt" placeholder="தொகை" min="0" step="1" value="${amtVal}">
+    <button class="row-x" title="நீக்கு">×</button>
+  `;
+  container.appendChild(row);
+  row.querySelector('.f-charge-amt').addEventListener('input', ()=> recomputeTotals(id));
+  row.querySelector('.row-x').addEventListener('click', ()=>{ row.remove(); recomputeTotals(id); });
+}
+function recomputeTotals(id){
+  let subtotal = 0;
+  document.querySelectorAll('#items-'+id+' .item-row').forEach(row=>{
+    const w = parseFloat(row.querySelector('.f-weight').value)||0;
+    const r = parseFloat(row.querySelector('.f-rate').value)||0;
+    subtotal += w*r;
+  });
+  document.querySelectorAll('#charges-'+id+' .charge-row').forEach(row=>{
+    subtotal += parseFloat(row.querySelector('.f-charge-amt').value)||0;
+  });
+  const discount = parseFloat(document.getElementById('discount-'+id).value)||0;
+  const total = Math.max(0, subtotal-discount);
+  document.getElementById('subtotal-'+id).textContent = fmt(subtotal);
+  document.getElementById('total-'+id).textContent = fmt(total);
+  return {subtotal, discount, total};
+}
+function collectItemsAndCharges(id){
+  const items=[], charges=[];
+  document.querySelectorAll('#items-'+id+' .item-row').forEach(row=>{
+    const product = row.querySelector('.f-product').value.trim();
+    const quality = row.querySelector('.f-quality').value;
+    const weight = parseFloat(row.querySelector('.f-weight').value)||0;
+    const unit = row.querySelector('.f-unit').value.trim()||'கிலோ';
+    const rate = parseFloat(row.querySelector('.f-rate').value)||0;
+    if(product && weight>0 && rate>0) items.push({product, quality, weight, unit, rate, amount:weight*rate});
+  });
+  document.querySelectorAll('#charges-'+id+' .charge-row').forEach(row=>{
+    const desc = row.querySelector('.f-charge-desc').value.trim();
+    const amount = parseFloat(row.querySelector('.f-charge-amt').value)||0;
+    if(desc && amount>0) charges.push({desc, amount});
+  });
+  return {items, charges};
+}
+
+/* ================= SHARED: PDF PIPELINE ================= */
+async function snapshotToPDF(htmlString, filename, shareCtx){
+  const holder = document.getElementById('pdfTemplate');
+  holder.innerHTML = htmlString;
+  await new Promise(r=>setTimeout(r,60));
+  let canvas;
+  try{ canvas = await html2canvas(holder.firstElementChild, {scale:2, backgroundColor:'#ffffff'}); }
+  catch(err){ alert('PDF உருவாக்கத்தில் சிக்கல்.'); return; }
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({unit:'pt', format:'a4'});
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const margin = 24;
+  const imgWidth = pageWidth - margin*2;
+  const imgHeight = canvas.height * (imgWidth/canvas.width);
+  pdf.addImage(imgData,'PNG',margin,margin,imgWidth,imgHeight);
+  const blob = pdf.output('blob');
+  offerShareOrDownload(blob, filename, shareCtx);
+}
+async function offerShareOrDownload(blob, filename, shareCtx){
+  const file = new File([blob], filename, {type:'application/pdf'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], title:'PDF', text:`${company.name||''} — ${(shareCtx&&shareCtx.name)||''}`}); return; }
+    catch(err){ /* fallthrough */ }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  const waText = encodeURIComponent(`${company.name||''} — PDF பதிவிறக்கம் ஆனது, WhatsApp-ல் இணைத்து அனுப்பவும்.`);
+  window.open('https://wa.me/?text='+waText, '_blank');
+}
+function docHeaderHTML(titleLine){
+  return `
+    <div style="text-align:center;margin-bottom:18px;">
+      <div style="font-family:'Baloo Thambi 2',sans-serif;font-size:26px;font-weight:700;">${escapeHtml(company.name||'')}</div>
+      <div style="font-size:13px;color:#555;margin-top:4px;">${escapeHtml(company.address||'')}</div>
+      <div style="font-size:13px;color:#555;">${company.mobile ? 'மொபைல்: '+escapeHtml(company.mobile):''}</div>
+      ${titleLine ? '<div style="font-size:15px;font-weight:700;margin-top:14px;">'+titleLine+'</div>' : ''}
+    </div>`;
+}
+
+/* ================= GENERIC PARTY LEDGER (sales & purchase) ================= */
+const CFG = {
+  sale: {
+    entities: ()=>customers, docs: ()=>invoices,
+    debitType:'bill', creditType:'payment',
+    colDebit:'வாங்கியது', colCredit:'செலுத்தியது',
+    listId:'salesListArea', docLabelShort:'இன்வாய்ஸ்', newDocBtn:'+ புதிய இன்வாய்ஸ்',
+    docTitle:'இன்வாய்ஸ்', statementBtn:'ஸ்டேட்மெண்ட் PDF', payBtn:'+ பணம் வரவு', paySaveNote:'', defaultMode:'UPI'
+  },
+  purchase: {
+    entities: ()=>suppliers, docs: ()=>purchaseBills,
+    debitType:'purchase', creditType:'payment',
+    colDebit:'வாங்கியது', colCredit:'கொடுத்தது',
+    listId:'purchaseListArea', docLabelShort:'கொள்முதல்', newDocBtn:'+ புதிய கொள்முதல்',
+    docTitle:'கொள்முதல் பில்', statementBtn:'ஸ்டேட்மெண்ட் PDF', payBtn:'+ பணம் கொடு', paySaveNote:'', defaultMode:'காசு'
+  }
+};
+
+function renderParty(kind){
+  const cfg = CFG[kind];
+  const entities = cfg.entities();
+  const listArea = document.getElementById(cfg.listId);
+  if(!entities.length){
+    listArea.innerHTML = `<div class="empty"><p>இன்னும் ${kind==='sale'?'வாடிக்கையாளர்கள்':'சப்ளையர்கள்'} இல்லை. மேலே பெயர் எழுதி "சேர்" அழுத்தி தொடங்குங்கள்.</p></div>`;
+    return;
+  }
+  let html = `<div class="col-headers"><span>பெயர்</span><span>${cfg.colDebit}</span><span>${cfg.colCredit}</span><span>மீதி</span><span></span></div>`;
+  html += entities.map(p=>{
+    const t = partyTotals(p.entries, cfg.debitType, cfg.creditType);
+    const open = p._open ? 'open':'';
+    const balClass = t.balance>0 ? 'due':'clear';
+    const sorted = [...p.entries].sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+    const entriesHtml = sorted.length ? sorted.map(e=>{
+      const isDebit = e.type===cfg.debitType;
+      const modeTag = (!isDebit && e.mode) ? ` <span style="color:#2F6690;">[${escapeHtml(e.mode)}]</span>` : '';
+      return `<div class="entry">
+        <span class="left">${e.date}${e.note ? ' — <span class="note">'+escapeHtml(e.note)+'</span>':''}${modeTag}</span>
+        <span class="right">
+          ${isDebit && e.docId ? `<button class="btn-link" data-edit-doc="${kind}:${e.docId}">✎</button><button class="btn-link" data-view-doc="${kind}:${e.docId}">PDF</button>` : ''}
+          <span class="amt ${isDebit?'debit':'credit'}">${isDebit?'+':'−'}${fmt(e.amount)}</span>
+          ${isDebit && e.docId
+            ? `<button class="btn-del" data-del-doc="${kind}:${e.docId}" title="நீக்கு">🗑</button>`
+            : `<button class="btn-del" data-del-entry="${kind}:${p.id}:${e.id}" title="நீக்கு">🗑</button>`}
+        </span>
+      </div>`;
+    }).join('') : `<div class="no-entries">இன்னும் பதிவுகள் இல்லை.</div>`;
+
+    return `
+      <div class="party ${open}" data-id="${p.id}">
+        <div class="party-row" data-toggle="${kind}:${p.id}">
+          <span class="party-name">${escapeHtml(p.name)}</span>
+          <span class="num">${fmt(t.debit)}</span>
+          <span class="num">${fmt(t.credit)}</span>
+          <span class="num balance ${balClass}">${fmt(t.balance)}</span>
+          <span class="chevron"></span>
+        </div>
+        <div class="detail">
+          <div class="contact-line">
+            <span id="contact-view-${p.id}">${(p.address||p.phone) ? [p.address, p.phone?'மொபைல்: '+p.phone:''].filter(Boolean).join(' · ') : 'முகவரி / மொபைல் சேர்க்கவும்'}</span>
+            <button class="btn-link" data-edit-contact="${kind}:${p.id}">✎ திருத்து</button>
+          </div>
+          <div class="contact-form" id="contact-form-${p.id}">
+            <input type="text" id="addr-${p.id}" placeholder="முகவரி" value="${escapeHtml(p.address||'')}">
+            <input type="text" id="phone-${p.id}" placeholder="மொபைல் எண்" value="${escapeHtml(p.phone||'')}">
+            <button class="btn-small" data-save-contact="${kind}:${p.id}">சேமி</button>
+          </div>
+          <div class="entries">${entriesHtml}</div>
+          <div class="action-row">
+            <button class="btn-outline" data-open-doc="${kind}:${p.id}">${cfg.newDocBtn}</button>
+            <button class="btn-outline" data-open-pay="${kind}:${p.id}">${cfg.payBtn}</button>
+            <button class="btn-outline" data-statement="${kind}:${p.id}">${cfg.statementBtn}</button>
+          </div>
+
+          <div class="pay-form" id="pay-form-${p.id}">
+            <input type="date" id="pay-date-${p.id}" value="${todayISO()}">
+            <input type="number" id="pay-amt-${p.id}" placeholder="தொகை" min="0" step="1">
+            <select id="pay-mode-${p.id}"><option value="காசு" ${cfg.defaultMode==='காசு'?'selected':''}>காசு</option><option value="UPI" ${cfg.defaultMode==='UPI'?'selected':''}>UPI</option><option value="வங்கி" ${cfg.defaultMode==='வங்கி'?'selected':''}>வங்கி</option></select>
+            <div class="quick-amts" id="pay-quick-${p.id}"></div>
+            <button class="btn" data-save-pay="${kind}:${p.id}">சேமி</button>
+          </div>
+
+          <div class="invoice-builder" id="ib-${p.id}" data-editing-doc="">
+            <h4 id="ib-title-${p.id}">புதிய ${cfg.docTitle} — ${escapeHtml(p.name)}</h4>
+            <div class="ib-row" style="margin-bottom:10px;">
+              <span class="field-label">தேதி</span>
+              <input type="date" id="ib-date-${p.id}" value="${todayISO()}">
+              <span class="field-label" style="margin-left:8px;">எண்</span>
+              <strong id="ib-no-${p.id}">${String(counters[kind]).padStart(4,'0')}</strong>
+            </div>
+            <div id="items-${p.id}"></div>
+            <div class="ib-sub-actions"><button class="ib-quick" data-add-item="${p.id}">+ இன்னொரு பொருள் வரி (வேறு தரம்/பொருள்)</button></div>
+            <div id="charges-${p.id}"></div>
+            <div class="ib-sub-actions">
+              <button class="ib-quick" data-add-charge="${p.id}" data-charge-desc="ஏற்றுதல் கட்டணம் (Loading)">+ ஏற்றுதல்</button>
+              <button class="ib-quick" data-add-charge="${p.id}" data-charge-desc="இறக்குதல் கட்டணம் (Unloading)">+ இறக்குதல்</button>
+              <button class="ib-quick" data-add-charge="${p.id}" data-charge-desc="வாகன வாடகை (Vehicle Rent)">+ வாகன வாடகை</button>
+              <button class="ib-quick" data-add-charge="${p.id}" data-charge-desc="பேருந்து கட்டணம் (Bus Fare)">+ பேருந்து கட்டணம்</button>
+              <button class="ib-quick" data-add-charge="${p.id}" data-charge-desc="">+ கூடுதல் கட்டணம்</button>
+            </div>
+            <div class="ib-totals">
+              <div>துணை மொத்தம்: <strong id="subtotal-${p.id}">₹0</strong></div>
+              <div class="discount-row">தள்ளுபடி: ₹ <input type="number" id="discount-${p.id}" min="0" step="1" value="0"></div>
+              <div class="total-line">மொத்தம் payable: <span id="total-${p.id}">₹0</span></div>
+            </div>
+            <div class="action-row">
+              <button class="btn" id="ib-save-${p.id}" data-generate="${kind}:${p.id}">${cfg.docTitle} உருவாக்கி PDF பதிவிறக்கு</button>
+              <button class="btn-outline" data-close-doc="${kind}:${p.id}">ரத்து செய்</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  listArea.innerHTML = html;
+  bindPartyEvents(kind, listArea);
+}
+
+function bindPartyEvents(kind, listArea){
+  listArea.querySelectorAll('[data-toggle]').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const [k,id] = row.getAttribute('data-toggle').split(':');
+      const p = CFG[k].entities().find(x=>x.id===id);
+      p._open = !p._open;
+      renderParty(k);
+    });
+  });
+  listArea.querySelectorAll('.detail').forEach(d=> d.addEventListener('click', ev=>ev.stopPropagation()));
+
+  listArea.querySelectorAll('[data-edit-contact]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{
+      ev.stopPropagation();
+      const [,id] = btn.getAttribute('data-edit-contact').split(':');
+      document.getElementById('contact-form-'+id).classList.toggle('show');
+    });
+  });
+  listArea.querySelectorAll('[data-save-contact]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{
+      ev.stopPropagation();
+      const [k,id] = btn.getAttribute('data-save-contact').split(':');
+      const p = CFG[k].entities().find(x=>x.id===id);
+      p.address = document.getElementById('addr-'+id).value.trim();
+      p.phone = document.getElementById('phone-'+id).value.trim();
+      p._open = true;
+      saveAll(); renderParty(k);
+    });
+  });
+
+  listArea.querySelectorAll('[data-open-pay]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{
+      ev.stopPropagation();
+      const [,id] = btn.getAttribute('data-open-pay').split(':');
+      const pf = document.getElementById('pay-form-'+id);
+      pf.classList.toggle('show');
+      const qc = document.getElementById('pay-quick-'+id);
+      if(pf.classList.contains('show') && !qc.dataset.built){
+        qc.dataset.built='1';
+        [100,500,1000,2000,5000].forEach(v=>{
+          const b = document.createElement('button');
+          b.textContent = '+'+v;
+          b.addEventListener('click', e=>{ e.stopPropagation(); const inp=document.getElementById('pay-amt-'+id); inp.value = (parseFloat(inp.value)||0)+v; });
+          qc.appendChild(b);
+        });
+      }
+    });
+  });
+  listArea.querySelectorAll('[data-save-pay]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{
+      ev.stopPropagation();
+      const [k,id] = btn.getAttribute('data-save-pay').split(':');
+      const amtEl = document.getElementById('pay-amt-'+id);
+      const dateEl = document.getElementById('pay-date-'+id);
+      const modeEl = document.getElementById('pay-mode-'+id);
+      const amount = parseFloat(amtEl.value);
+      if(!amount || amount<=0){ amtEl.focus(); return; }
+      const p = CFG[k].entities().find(x=>x.id===id);
+      p.entries.push({id:uid(), type:'payment', date: dateEl.value||todayISO(), amount, note:'', mode: modeEl ? modeEl.value : ''});
+      p._open = true;
+      saveAll(); renderAll(); exportBackup();
+    });
+  });
+
+  listArea.querySelectorAll('[data-open-doc]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{
+      ev.stopPropagation();
+      const [,id] = btn.getAttribute('data-open-doc').split(':');
+      const panel = document.getElementById('ib-'+id);
+      const willShow = !panel.classList.contains('show');
+      panel.classList.toggle('show');
+      if(willShow && !panel.dataset.built){ panel.dataset.built='1'; addItemRow(id); recomputeTotals(id); }
+    });
+  });
+  listArea.querySelectorAll('[data-close-doc]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{
+      ev.stopPropagation();
+      const [k,id] = btn.getAttribute('data-close-doc').split(':');
+      resetBuilder(k, id);
+    });
+  });
+  listArea.querySelectorAll('[data-add-item]').forEach(btn=> btn.addEventListener('click', ev=>{ ev.stopPropagation(); addItemRow(btn.getAttribute('data-add-item')); }));
+  listArea.querySelectorAll('[data-add-charge]').forEach(btn=> btn.addEventListener('click', ev=>{ ev.stopPropagation(); addChargeRow(btn.getAttribute('data-add-charge'), btn.getAttribute('data-charge-desc')||''); }));
+  listArea.querySelectorAll('[id^="discount-"]').forEach(inp=> inp.addEventListener('input', ()=> recomputeTotals(inp.id.replace('discount-',''))));
+
+  listArea.querySelectorAll('[data-generate]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{ ev.stopPropagation(); const [k,id]=btn.getAttribute('data-generate').split(':'); generateDoc(k,id); });
+  });
+  listArea.querySelectorAll('[data-view-doc]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{ ev.stopPropagation(); const [k,docId]=btn.getAttribute('data-view-doc').split(':'); viewDocPDF(k,docId); });
+  });
+  listArea.querySelectorAll('[data-edit-doc]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{ ev.stopPropagation(); const [k,docId]=btn.getAttribute('data-edit-doc').split(':'); editDoc(k,docId); });
+  });
+  listArea.querySelectorAll('[data-del-doc]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{
+      ev.stopPropagation();
+      const [k,docId] = btn.getAttribute('data-del-doc').split(':');
+      const cfg = CFG[k];
+      const doc = cfg.docs().find(d=>d.id===docId);
+      if(!doc) return;
+      if(!confirm('இந்த '+cfg.docTitle+'-ஐ நீக்கலாமா? இது கணக்கிலிருந்தும் நீக்கப்படும்.')) return;
+      const docsArr = cfg.docs();
+      const idx = docsArr.findIndex(d=>d.id===docId);
+      if(idx>-1) docsArr.splice(idx,1);
+      const entity = cfg.entities().find(x=>x.id===doc.entityId);
+      if(entity) entity.entries = entity.entries.filter(e=>e.docId!==docId);
+      saveAll(); renderAll();
+    });
+  });
+  listArea.querySelectorAll('[data-statement]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{ ev.stopPropagation(); const [k,id]=btn.getAttribute('data-statement').split(':'); generateStatement(k,id); });
+  });
+  listArea.querySelectorAll('[data-del-entry]').forEach(btn=>{
+    btn.addEventListener('click', ev=>{
+      ev.stopPropagation();
+      const [k,pid,eid] = btn.getAttribute('data-del-entry').split(':');
+      if(!confirm('இந்த பதிவை நீக்கலாமா?')) return;
+      const p = CFG[k].entities().find(x=>x.id===pid);
+      p.entries = p.entries.filter(e=>e.id!==eid);
+      saveAll(); renderAll();
+    });
+  });
+}
+
+function resetBuilder(kind, id){
+  const panel = document.getElementById('ib-'+id);
+  if(!panel) return;
+  panel.classList.remove('show');
+  panel.dataset.built = '';
+  panel.dataset.editingDoc = '';
+  document.getElementById('items-'+id).innerHTML = '';
+  document.getElementById('charges-'+id).innerHTML = '';
+  const discEl = document.getElementById('discount-'+id); if(discEl) discEl.value = 0;
+  const entity = CFG[kind].entities().find(x=>x.id===id);
+  const titleEl = document.getElementById('ib-title-'+id);
+  if(titleEl && entity) titleEl.textContent = 'புதிய '+CFG[kind].docTitle+' — '+entity.name;
+  const noEl = document.getElementById('ib-no-'+id);
+  if(noEl) noEl.textContent = String(counters[kind]).padStart(4,'0');
+  const saveBtn = document.getElementById('ib-save-'+id);
+  if(saveBtn) saveBtn.textContent = CFG[kind].docTitle+' உருவாக்கி PDF பதிவிறக்கு';
+}
+
+function editDoc(kind, docId){
+  const cfg = CFG[kind];
+  const doc = cfg.docs().find(d=>d.id===docId);
+  if(!doc) return;
+  const entity = cfg.entities().find(x=>x.id===doc.entityId);
+  if(!entity) return;
+  entity._open = true;
+  renderParty(kind);
+
+  const id = entity.id;
+  const panel = document.getElementById('ib-'+id);
+  panel.classList.add('show');
+  panel.dataset.built = '1';
+  panel.dataset.editingDoc = docId;
+
+  document.getElementById('items-'+id).innerHTML = '';
+  document.getElementById('charges-'+id).innerHTML = '';
+  doc.items.forEach(it=> addItemRow(id, it));
+  doc.charges.forEach(ch=> addChargeRow(id, ch.desc, ch.amount));
+  document.getElementById('ib-date-'+id).value = doc.date;
+  document.getElementById('discount-'+id).value = doc.discount;
+  recomputeTotals(id);
+
+  const titleEl = document.getElementById('ib-title-'+id);
+  if(titleEl) titleEl.textContent = cfg.docTitle+' திருத்தம் — '+entity.name+' (எண் '+String(doc.number).padStart(4,'0')+')';
+  const noEl = document.getElementById('ib-no-'+id);
+  if(noEl) noEl.textContent = String(doc.number).padStart(4,'0');
+  const saveBtn = document.getElementById('ib-save-'+id);
+  if(saveBtn) saveBtn.textContent = 'புதுப்பிக்கவும் (Update & PDF)';
+
+  panel.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function generateDoc(kind, entityId){
+  if(!company.name){
+    alert('முதலில் மேலே "✎ திருத்து" வழியாக நிறுவன விவரம் சேமிக்கவும்.');
+    document.getElementById('companyForm').classList.add('show');
+    return;
+  }
+  const cfg = CFG[kind];
+  const entity = cfg.entities().find(x=>x.id===entityId);
+  const {items, charges} = collectItemsAndCharges(entityId);
+  if(!items.length && !charges.length){ alert('குறைந்தது ஒரு பொருள் வரி அல்லது கட்டணம் நிரப்பவும்.'); return; }
+  const {subtotal, discount, total} = recomputeTotals(entityId);
+  const date = document.getElementById('ib-date-'+entityId).value || todayISO();
+  const panel = document.getElementById('ib-'+entityId);
+  const editingDocId = panel.dataset.editingDoc;
+
+  if(editingDocId){
+    const doc = cfg.docs().find(d=>d.id===editingDocId);
+    if(doc){
+      doc.date=date; doc.items=items; doc.charges=charges; doc.subtotal=subtotal; doc.discount=discount; doc.total=total;
+      const entry = entity.entries.find(e=>e.docId===editingDocId);
+      if(entry){ entry.date=date; entry.amount=total; }
+      entity._open = true;
+      saveAll(); renderAll(); exportBackup();
+      snapshotToPDF(buildDocHTML(kind, doc, entity), `${kind}-${String(doc.number).padStart(4,'0')}-${entity.name.replace(/\s+/g,'-')}.pdf`, entity);
+    }
+    return;
+  }
+
+  const doc = {id:uid(), number:counters[kind], entityId, date, items, charges, subtotal, discount, total};
+  cfg.docs().push(doc);
+  counters[kind] += 1;
+
+  entity.entries.push({
+    id:uid(), type:cfg.debitType, date, amount: total,
+    note: cfg.docLabelShort+' #'+String(doc.number).padStart(4,'0'), docId: doc.id
+  });
+  entity._open = true;
+
+  saveAll(); renderAll(); exportBackup();
+  snapshotToPDF(buildDocHTML(kind, doc, entity), `${kind}-${String(doc.number).padStart(4,'0')}-${entity.name.replace(/\s+/g,'-')}.pdf`, entity);
+}
+
+function viewDocPDF(kind, docId){
+  const cfg = CFG[kind];
+  const doc = cfg.docs().find(d=>d.id===docId);
+  if(!doc) return;
+  const entity = cfg.entities().find(x=>x.id===doc.entityId);
+  snapshotToPDF(buildDocHTML(kind, doc, entity), `${kind}-${String(doc.number).padStart(4,'0')}-${entity.name.replace(/\s+/g,'-')}.pdf`, entity);
+}
+
+function buildDocHTML(kind, doc, entity){
+  const cfg = CFG[kind];
+  const rows = [];
+  let sn=1;
+  doc.items.forEach(it=>{
+    rows.push(`<tr><td style="padding:6px 4px;text-align:center;border-bottom:1px dashed #ccc;">${sn++}</td>
+      <td style="padding:6px 4px;text-align:left;border-bottom:1px dashed #ccc;">${escapeHtml(it.product)} (தரம் ${it.quality})</td>
+      <td style="padding:6px 4px;text-align:center;border-bottom:1px dashed #ccc;">${it.weight} ${escapeHtml(it.unit)}</td>
+      <td style="padding:6px 4px;text-align:right;border-bottom:1px dashed #ccc;">₹${it.rate}</td>
+      <td style="padding:6px 4px;text-align:right;border-bottom:1px dashed #ccc;">₹${Math.round(it.amount).toLocaleString('en-IN')}</td></tr>`);
+  });
+  doc.charges.forEach(ch=>{
+    rows.push(`<tr><td style="padding:6px 4px;text-align:center;border-bottom:1px dashed #ccc;">${sn++}</td>
+      <td style="padding:6px 4px;text-align:left;border-bottom:1px dashed #ccc;">${escapeHtml(ch.desc)}</td>
+      <td style="padding:6px 4px;text-align:center;border-bottom:1px dashed #ccc;">—</td>
+      <td style="padding:6px 4px;text-align:right;border-bottom:1px dashed #ccc;">—</td>
+      <td style="padding:6px 4px;text-align:right;border-bottom:1px dashed #ccc;">₹${Math.round(ch.amount).toLocaleString('en-IN')}</td></tr>`);
+  });
+  return `<div style="font-family:'Noto Sans Tamil','Noto Sans',sans-serif;color:#20201A;padding:40px;width:680px;background:#fff;">
+    ${docHeaderHTML('')}
+    <div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:10px;">
+      <div>${cfg.docTitle} எண்: <strong>${String(doc.number).padStart(4,'0')}</strong></div>
+      <div>தேதி: <strong>${dateIN(doc.date)}</strong></div>
+    </div>
+    <div style="font-size:13.5px;margin-bottom:14px;">
+      <div>${kind==='sale'?'வாடிக்கையாளர்':'சப்ளையர்'} பெயர்: <strong>${escapeHtml(entity.name)}</strong></div>
+      <div>முகவரி: ${escapeHtml(entity.address||'')}</div>
+      ${entity.phone ? '<div>மொபைல்: '+escapeHtml(entity.phone)+'</div>' : ''}
+    </div>
+    <hr style="border:none;border-top:1.4px solid #333;margin:10px 0;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead><tr style="border-bottom:1.2px solid #333;">
+        <th style="padding:6px 4px;text-align:center;width:32px;">வ.எண்</th>
+        <th style="padding:6px 4px;text-align:left;">பொருள்/சேவை விவரம்</th>
+        <th style="padding:6px 4px;text-align:center;width:90px;">அளவு</th>
+        <th style="padding:6px 4px;text-align:right;width:80px;">விலை (₹)</th>
+        <th style="padding:6px 4px;text-align:right;width:100px;">மொத்தம் (₹)</th>
+      </tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>
+    <hr style="border:none;border-top:1.4px solid #333;margin:10px 0;">
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:14px;margin-top:8px;">
+      <div>துணை மொத்தம் (Subtotal): ₹ ${Math.round(doc.subtotal).toLocaleString('en-IN')}</div>
+      <div>தள்ளுபடி (Discount): ₹ ${Math.round(doc.discount).toLocaleString('en-IN')}</div>
+      <div style="font-weight:700;font-size:16px;">மொத்தம் payable: ₹ ${Math.round(doc.total).toLocaleString('en-IN')}</div>
+    </div>
+    <div style="text-align:center;margin-top:26px;font-size:14px;color:#444;">நன்றி!</div>
+  </div>`;
+}
+
+function generateStatement(kind, entityId){
+  const cfg = CFG[kind];
+  const entity = cfg.entities().find(x=>x.id===entityId);
+  const sorted = [...entity.entries].sort((a,b)=> a.date.localeCompare(b.date));
+  let running=0;
+  const rows = sorted.map((e,idx)=>{
+    const isDebit = e.type===cfg.debitType;
+    running += isDebit ? e.amount : -e.amount;
+    return `<tr><td style="padding:6px 4px;text-align:center;border-bottom:1px dashed #ccc;">${idx+1}</td>
+      <td style="padding:6px 4px;text-align:left;border-bottom:1px dashed #ccc;">${e.date}${e.note?' — '+escapeHtml(e.note):''}</td>
+      <td style="padding:6px 4px;text-align:right;border-bottom:1px dashed #ccc;">${isDebit?'₹'+Math.round(e.amount).toLocaleString('en-IN'):'—'}</td>
+      <td style="padding:6px 4px;text-align:right;border-bottom:1px dashed #ccc;">${!isDebit?'₹'+Math.round(e.amount).toLocaleString('en-IN'):'—'}</td>
+      <td style="padding:6px 4px;text-align:right;border-bottom:1px dashed #ccc;font-weight:600;">₹${Math.round(running).toLocaleString('en-IN')}</td></tr>`;
+  }).join('');
+  const t = partyTotals(entity.entries, cfg.debitType, cfg.creditType);
+  const html = `<div style="font-family:'Noto Sans Tamil','Noto Sans',sans-serif;color:#20201A;padding:40px;width:680px;background:#fff;">
+    ${docHeaderHTML('')}
+    <div style="font-size:14px;margin-bottom:12px;">
+      <div style="font-weight:700;font-size:15px;">ஸ்டேட்மெண்ட் — ${escapeHtml(entity.name)}</div>
+      <div style="font-size:12.5px;color:#666;">தேதி: ${dateIN(todayISO())}</div>
+    </div>
+    <hr style="border:none;border-top:1.4px solid #333;margin:10px 0;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead><tr style="border-bottom:1.2px solid #333;">
+        <th style="padding:6px 4px;text-align:center;width:32px;">வ.எண்</th>
+        <th style="padding:6px 4px;text-align:left;">விவரம்</th>
+        <th style="padding:6px 4px;text-align:right;">${cfg.colDebit}</th>
+        <th style="padding:6px 4px;text-align:right;">${cfg.colCredit}</th>
+        <th style="padding:6px 4px;text-align:right;">இருப்பு</th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="5" style="padding:14px;text-align:center;color:#888;">பதிவுகள் இல்லை</td></tr>'}</tbody>
+    </table>
+    <hr style="border:none;border-top:1.4px solid #333;margin:10px 0;">
+    <div style="text-align:right;font-weight:700;font-size:16px;margin-top:6px;">மொத்த நிலுவை: ₹${Math.round(t.balance).toLocaleString('en-IN')}</div>
+  </div>`;
+  snapshotToPDF(html, `statement-${entity.name.replace(/\s+/g,'-')}-${todayISO()}.pdf`, entity);
+}
+
+/* ================= ADD PARTY ================= */
+document.getElementById('addCustomerBtn').addEventListener('click', ()=>{
+  const n=document.getElementById('newCustName'), a=document.getElementById('newCustAddr'), ph=document.getElementById('newCustPhone');
+  const name = n.value.trim(); if(!name){ n.focus(); return; }
+  customers.push({id:uid(), name, address:a.value.trim(), phone:ph.value.trim(), entries:[], _open:true});
+  n.value=''; a.value=''; ph.value='';
+  saveAll(); renderAll();
+});
+document.getElementById('newCustName').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('addCustomerBtn').click(); });
+
+document.getElementById('addSupplierBtn').addEventListener('click', ()=>{
+  const n=document.getElementById('newSupName'), a=document.getElementById('newSupPlace'), ph=document.getElementById('newSupPhone');
+  const name = n.value.trim(); if(!name){ n.focus(); return; }
+  suppliers.push({id:uid(), name, address:a.value.trim(), phone:ph.value.trim(), entries:[], _open:true});
+  n.value=''; a.value=''; ph.value='';
+  saveAll(); renderAll();
+});
+document.getElementById('newSupName').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('addSupplierBtn').click(); });
+
+/* ================= STOCK ================= */
+function computeStock(){
+  const map = {};
+  function addQty(product, quality, unit, delta){
+    const key = product+'|'+quality+'|'+unit;
+    if(!map[key]) map[key] = {product, quality, unit, qty:0};
+    map[key].qty += delta;
+  }
+  purchaseBills.forEach(doc=> doc.items.forEach(it=> addQty(it.product, it.quality, it.unit, it.weight)));
+  invoices.forEach(doc=> doc.items.forEach(it=> addQty(it.product, it.quality, it.unit, -it.weight)));
+  wastage.forEach(w=> addQty(w.product, w.quality, w.unit, -w.weight));
+  return Object.values(map);
+}
+
+/* ================= CASH BOOK ================= */
+function computeCashInHand(){
+  const custPay = customers.reduce((s,c)=> s + c.entries.filter(e=>e.type==='payment').reduce((a,e)=>a+e.amount,0), 0);
+  const supPay = suppliers.reduce((s,c)=> s + c.entries.filter(e=>e.type==='payment').reduce((a,e)=>a+e.amount,0), 0);
+  const expTotal = expenses.reduce((a,e)=>a+e.amount,0);
+  return (company.openingCash||0) + custPay - supPay - expTotal;
+}
+function todayTotal(arr, dateField){ return arr.filter(x=>x[dateField]===todayISO()).reduce((a,x)=>a+(x.amount||x.total||0),0); }
+
+function renderCashBook(){
+  const custPay = customers.reduce((s,c)=> s + c.entries.filter(e=>e.type==='payment').reduce((a,e)=>a+e.amount,0), 0);
+  const supPay = suppliers.reduce((s,c)=> s + c.entries.filter(e=>e.type==='payment').reduce((a,e)=>a+e.amount,0), 0);
+  const expTotal = expenses.reduce((a,e)=>a+e.amount,0);
+  const cash = computeCashInHand();
+  document.getElementById('cashSummary').innerHTML = `
+    <div class="line">தொடக்க ரொக்கம்: ${fmt(company.openingCash||0)}</div>
+    <div class="line">+ வாடிக்கையாளர் வரவு: ${fmt(custPay)}</div>
+    <div class="line">− சப்ளையர் பணம்: ${fmt(supPay)}</div>
+    <div class="line">− செலவுகள்: ${fmt(expTotal)}</div>
+    <div class="line total">கையில் உள்ள ரொக்கம்: ${fmt(cash)}</div>
+  `;
+  const list = document.getElementById('expenseListArea');
+  const sorted = [...expenses].sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  list.innerHTML = sorted.length ? sorted.map(e=>`
+    <div class="entry" style="padding:11px 14px;">
+      <span class="left">${e.date} — <span class="note">${escapeHtml(e.category)}</span>${e.note?' ('+escapeHtml(e.note)+')':''}</span>
+      <span class="right"><span class="amt debit">−${fmt(e.amount)}</span><button class="btn-del" data-del-exp="${e.id}" title="நீக்கு">🗑</button></span>
+    </div>`).join('') : `<div class="feed-empty">இன்னும் செலவுகள் இல்லை.</div>`;
+  list.querySelectorAll('[data-del-exp]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(!confirm('இந்த செலவை நீக்கலாமா?')) return;
+      expenses = expenses.filter(e=>e.id!==btn.getAttribute('data-del-exp'));
+      saveAll(); renderAll();
+    });
+  });
+}
+document.querySelectorAll('[data-exp]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const cat = btn.getAttribute('data-exp');
+    document.getElementById('expLabel').textContent = cat;
+    document.getElementById('expenseForm').classList.add('show');
+    document.getElementById('expenseForm').dataset.cat = cat;
+    document.getElementById('expDate').value = todayISO();
+    document.getElementById('expAmt').value = '';
+    const qc = document.getElementById('expQuickAmts');
+    qc.innerHTML='';
+    [100,500,1000,2000,5000].forEach(v=>{
+      const b=document.createElement('button'); b.textContent='+'+v;
+      b.addEventListener('click', ()=>{ const inp=document.getElementById('expAmt'); inp.value=(parseFloat(inp.value)||0)+v; });
+      qc.appendChild(b);
+    });
+  });
+});
+document.getElementById('expSaveBtn').addEventListener('click', ()=>{
+  const cat = document.getElementById('expenseForm').dataset.cat || 'மற்றவை';
+  const amt = parseFloat(document.getElementById('expAmt').value);
+  if(!amt || amt<=0){ document.getElementById('expAmt').focus(); return; }
+  expenses.push({id:uid(), date:document.getElementById('expDate').value||todayISO(), category:cat, amount:amt, note:''});
+  document.getElementById('expenseForm').classList.remove('show');
+  saveAll(); renderAll();
+});
+
+/* ================= REPORTS ================= */
+function renderReports(){
+  const custRows = [...customers].map(c=>({name:c.name, bal:partyTotals(c.entries,'bill','payment').balance})).filter(x=>x.bal!==0).sort((a,b)=>b.bal-a.bal);
+  document.getElementById('repCustDue').innerHTML = custRows.length ? custRows.map(r=>`<div class="report-row"><span>${escapeHtml(r.name)}</span><span class="${r.bal>0?'stock-low':''}">${fmt(r.bal)}</span></div>`).join('') : '<div class="report-row">நிலுவை இல்லை</div>';
+
+  const supRows = [...suppliers].map(s=>({name:s.name, bal:partyTotals(s.entries,'purchase','payment').balance})).filter(x=>x.bal!==0).sort((a,b)=>b.bal-a.bal);
+  document.getElementById('repSupDue').innerHTML = supRows.length ? supRows.map(r=>`<div class="report-row"><span>${escapeHtml(r.name)}</span><span class="${r.bal>0?'stock-low':''}">${fmt(r.bal)}</span></div>`).join('') : '<div class="report-row">நிலுவை இல்லை</div>';
+
+  const stock = computeStock();
+  document.getElementById('repStock').innerHTML = stock.length ? stock.map(s=>{
+    const low = s.unit==='கிலோ' && s.qty < 50;
+    return `<div class="report-row"><span>${escapeHtml(s.product)} (தரம் ${s.quality})</span><span class="${low?'stock-low':''}">${s.qty} ${escapeHtml(s.unit)}${low?' ⚠️ குறைவு':''}</span></div>`;
+  }).join('') : '<div class="report-row">இருப்பு தரவு இல்லை</div>';
+
+  const mk = monthKey(todayISO());
+  const monthPurchase = purchaseBills.filter(d=>monthKey(d.date)===mk).reduce((a,d)=>a+d.total,0);
+  const monthSales = invoices.filter(d=>monthKey(d.date)===mk).reduce((a,d)=>a+d.total,0);
+  const monthWastageKg = wastage.filter(w=>monthKey(w.date)===mk && w.unit==='கிலோ').reduce((a,w)=>a+w.weight,0);
+  const monthExpense = expenses.filter(e=>monthKey(e.date)===mk).reduce((a,e)=>a+e.amount,0);
+  const monthProfit = monthSales - monthPurchase - monthExpense;
+  document.getElementById('repMonthly').innerHTML = `
+    <div class="report-row"><span>மொத்த வாங்கியது</span><span>${fmt(monthPurchase)}</span></div>
+    <div class="report-row"><span>மொத்த விற்றது</span><span>${fmt(monthSales)}</span></div>
+    <div class="report-row"><span>கெட்டுப்போனது (கிலோ)</span><span>${monthWastageKg} கிலோ</span></div>
+    <div class="report-row"><span>மொத்த செலவு</span><span>${fmt(monthExpense)}</span></div>
+    <div class="report-row"><span>தோராய லாபம்/நஷ்டம்</span><span class="${monthProfit<0?'stock-low':''}">${fmt(monthProfit)}</span></div>
+  `;
+}
+document.getElementById('openWastageBtn').addEventListener('click', ()=> document.getElementById('wastageForm').classList.toggle('show'));
+document.getElementById('wSaveBtn').addEventListener('click', ()=>{
+  const product = document.getElementById('wProduct').value.trim();
+  const quality = document.getElementById('wQuality').value;
+  const weight = parseFloat(document.getElementById('wWeight').value);
+  const unit = document.getElementById('wUnit').value.trim()||'கிலோ';
+  const date = document.getElementById('wDate').value||todayISO();
+  const note = document.getElementById('wNote').value.trim();
+  if(!product || !weight || weight<=0){ document.getElementById('wWeight').focus(); return; }
+  wastage.push({id:uid(), date, product, quality, weight, unit, note});
+  document.getElementById('wWeight').value=''; document.getElementById('wNote').value='';
+  document.getElementById('wastageForm').classList.remove('show');
+  saveAll(); renderAll();
+});
+document.getElementById('ledgerPdfBtn').addEventListener('click', ()=>{
+  const html = `<div style="font-family:'Noto Sans Tamil','Noto Sans',sans-serif;color:#20201A;padding:40px;width:680px;background:#fff;">
+    ${docHeaderHTML('முழு அறிக்கை')}
+    <div style="font-size:12.5px;color:#666;text-align:center;margin-bottom:10px;">தேதி: ${dateIN(todayISO())}</div>
+    <div style="font-weight:700;margin:14px 0 6px;">யார் நமக்கு கடன்</div>
+    ${document.getElementById('repCustDue').innerHTML.replace(/class="report-row"/g,'style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dashed #ccc;"').replace(/class="stock-low"/g,'style="font-weight:700;"')}
+    <div style="font-weight:700;margin:14px 0 6px;">நாம் யாருக்கு கடன்</div>
+    ${document.getElementById('repSupDue').innerHTML.replace(/class="report-row"/g,'style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dashed #ccc;"').replace(/class="stock-low"/g,'style="font-weight:700;"')}
+    <div style="font-weight:700;margin:14px 0 6px;">இருப்பு</div>
+    ${document.getElementById('repStock').innerHTML.replace(/class="report-row"/g,'style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dashed #ccc;"').replace(/class="stock-low"/g,'style="font-weight:700;"')}
+    <div style="font-weight:700;margin:14px 0 6px;">இந்த மாத சுருக்கம்</div>
+    ${document.getElementById('repMonthly').innerHTML.replace(/class="report-row"/g,'style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px dashed #ccc;"').replace(/class="stock-low"/g,'style="font-weight:700;"')}
+  </div>`;
+  snapshotToPDF(html, `report-${todayISO()}.pdf`, {name:'Report'});
+});
+
+/* ================= HOME DASHBOARD ================= */
+function renderHome(){
+  const todaySales = invoices.filter(d=>d.date===todayISO()).reduce((a,d)=>a+d.total,0);
+  const todayPurchase = purchaseBills.filter(d=>d.date===todayISO()).reduce((a,d)=>a+d.total,0);
+  const todayExp = expenses.filter(e=>e.date===todayISO()).reduce((a,e)=>a+e.amount,0);
+  const stockTotalKg = computeStock().filter(s=>s.unit==='கிலோ').reduce((a,s)=>a+s.qty,0);
+
+  document.getElementById('cardSales').textContent = fmt(todaySales);
+  document.getElementById('cardExpense').textContent = fmt(todayPurchase+todayExp);
+  document.getElementById('cardCash').textContent = fmt(computeCashInHand());
+  document.getElementById('cardStock').textContent = Math.round(stockTotalKg) + ' கிலோ';
+
+  const feed = [];
+  invoices.forEach(d=>{ const c=customers.find(x=>x.id===d.entityId); feed.push({id:d.id, date:d.date, label:'விற்பனை', party:c?c.name:'', amount:d.total, cls:'credit'}); });
+  purchaseBills.forEach(d=>{ const s=suppliers.find(x=>x.id===d.entityId); feed.push({id:d.id, date:d.date, label:'கொள்முதல்', party:s?s.name:'', amount:d.total, cls:'debit'}); });
+  customers.forEach(c=> c.entries.filter(e=>e.type==='payment').forEach(e=> feed.push({id:e.id, date:e.date, label:'வரவு பெற்றது', party:c.name, amount:e.amount, cls:'credit'})));
+  suppliers.forEach(s=> s.entries.filter(e=>e.type==='payment').forEach(e=> feed.push({id:e.id, date:e.date, label:'பணம் கொடுத்தது', party:s.name, amount:e.amount, cls:'debit'})));
+  expenses.forEach(e=> feed.push({id:e.id, date:e.date, label:e.category, party:'', amount:e.amount, cls:'debit'}));
+
+  feed.sort((a,b)=> b.id.localeCompare(a.id));
+  const top5 = feed.slice(0,5);
+  const feedEl = document.getElementById('recentFeed');
+  feedEl.innerHTML = top5.length ? top5.map(f=>`
+    <div class="feed-row">
+      <span class="flabel"><b>${escapeHtml(f.label)}</b>${f.party?' — '+escapeHtml(f.party):''} <span style="color:#999;">(${f.date})</span></span>
+      <span class="amt ${f.cls}">${f.cls==='credit'?'+':'−'}${fmt(f.amount)}</span>
+    </div>`).join('') : `<div class="feed-empty">இன்னும் பரிவர்த்தனைகள் இல்லை.</div>`;
+}
+
+/* ================= BACKUP ================= */
+function exportBackup(){
+  const data = {exportedAt:new Date().toISOString(), customers, invoices, suppliers, purchaseBills, expenses, wastage, company, counters};
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download = `lemon-erp-backup-${todayISO()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+document.getElementById('backupExportBtn').addEventListener('click', exportBackup);
+document.getElementById('backupImportBtn').addEventListener('click', ()=> document.getElementById('backupFileInput').click());
+document.getElementById('backupFileInput').addEventListener('change', async ev=>{
+  const file = ev.target.files[0]; if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!Array.isArray(data.customers)) throw new Error('invalid');
+    if(!confirm('பேக்அப் கோப்பை ஏற்றினால், தற்போதுள்ள தரவு மாற்றப்படும். தொடரவா?')) return;
+    customers = data.customers||[]; invoices = data.invoices||[];
+    suppliers = data.suppliers||[]; purchaseBills = data.purchaseBills||[];
+    expenses = data.expenses||[]; wastage = data.wastage||[];
+    company = data.company||{name:'',address:'',mobile:'',openingCash:0};
+    counters = data.counters||{sale:1,purchase:1};
+    await saveAll(); renderCompanyBar(); renderAll();
+    alert('பேக்அப் வெற்றிகரமாக மீட்டமைக்கப்பட்டது.');
+  }catch(err){ alert('இந்த கோப்பை படிக்க முடியவில்லை.'); }
+  ev.target.value='';
+});
+
+/* ================= RENDER ALL ================= */
+function renderAll(){
+  renderParty('sale');
+  renderParty('purchase');
+  renderCashBook();
+  renderReports();
+  renderHome();
+}
+
+loadAll();
+</script>
+</body>
+</html>
