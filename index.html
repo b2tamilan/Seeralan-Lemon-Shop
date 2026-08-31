@@ -2,8 +2,16 @@
 <html lang="ta">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>எலுமிச்சை தொழில் கணக்கு</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2F5233">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="எலுமிச்சை கணக்கு">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -157,7 +165,7 @@
   .wastage-form input, .wastage-form select{border:1px solid var(--paper-line);background:#fff;border-radius:6px;padding:7px 9px;font-size:13px;font-family:inherit;}
 
   /* Tab bar */
-  .tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--green-deep);display:flex;justify-content:space-around;box-shadow:0 -4px 14px rgba(0,0,0,.25);z-index:50;max-width:820px;margin:0 auto;}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--green-deep);display:flex;justify-content:space-around;box-shadow:0 -4px 14px rgba(0,0,0,.25);z-index:50;max-width:820px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom);}
   .tabbtn{flex:1;background:none;border:none;color:#B9CDA9;padding:9px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;min-height:52px;}
   .tabbtn .ticon{font-size:19px;}
   .tabbtn.active{color:var(--lemon);}
@@ -208,6 +216,7 @@
     <button id="backupExportBtn">⬇ பேக்அப் பதிவிறக்கு</button>
     <button id="backupImportBtn">⬆ பேக்அப் மீட்டமை</button>
     <input type="file" id="backupFileInput" accept="application/json">
+    <button id="installBtn" class="hidden">📲 App ஆக Install செய்</button>
   </div>
 
   <!-- HOME -->
@@ -356,29 +365,33 @@ function partyTotals(entries, debitType, creditType){
   return {debit, credit, balance: debit-credit};
 }
 
-/* ================= STORAGE ================= */
+/* ================= STORAGE (browser localStorage — this device only) ================= */
+const LS_PREFIX = 'lemonshop:';
 async function saveAll(){
   try{
-    await window.storage.set('ls-customers', JSON.stringify(customers), false);
-    await window.storage.set('ls-invoices', JSON.stringify(invoices), false);
-    await window.storage.set('ls-suppliers', JSON.stringify(suppliers), false);
-    await window.storage.set('ls-purchase-bills', JSON.stringify(purchaseBills), false);
-    await window.storage.set('ls-expenses', JSON.stringify(expenses), false);
-    await window.storage.set('ls-wastage', JSON.stringify(wastage), false);
-    await window.storage.set('ls-company', JSON.stringify(company), false);
-    await window.storage.set('ls-counters', JSON.stringify(counters), false);
-  }catch(err){ console.error('save failed', err); }
+    localStorage.setItem(LS_PREFIX+'customers', JSON.stringify(customers));
+    localStorage.setItem(LS_PREFIX+'invoices', JSON.stringify(invoices));
+    localStorage.setItem(LS_PREFIX+'suppliers', JSON.stringify(suppliers));
+    localStorage.setItem(LS_PREFIX+'purchase-bills', JSON.stringify(purchaseBills));
+    localStorage.setItem(LS_PREFIX+'expenses', JSON.stringify(expenses));
+    localStorage.setItem(LS_PREFIX+'wastage', JSON.stringify(wastage));
+    localStorage.setItem(LS_PREFIX+'company', JSON.stringify(company));
+    localStorage.setItem(LS_PREFIX+'counters', JSON.stringify(counters));
+  }catch(err){
+    console.error('save failed', err);
+    alert('தரவு சேமிப்பில் சிக்கல் — Storage நிறைந்திருக்கலாம். பேக்அப் எடுத்து, பழைய தரவை நீக்கி முயற்சிக்கவும்.');
+  }
 }
 async function loadAll(){
-  const get = async (k, fallback) => { try{ const r = await window.storage.get(k,false); return r? JSON.parse(r.value) : fallback; }catch(e){ return fallback; } };
-  customers = await get('ls-customers', []);
-  invoices = await get('ls-invoices', []);
-  suppliers = await get('ls-suppliers', []);
-  purchaseBills = await get('ls-purchase-bills', []);
-  expenses = await get('ls-expenses', []);
-  wastage = await get('ls-wastage', []);
-  company = await get('ls-company', {name:'',address:'',mobile:'',openingCash:0});
-  counters = await get('ls-counters', {sale:1, purchase:1});
+  const get = (k, fallback) => { try{ const v = localStorage.getItem(LS_PREFIX+k); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } };
+  customers = get('customers', []);
+  invoices = get('invoices', []);
+  suppliers = get('suppliers', []);
+  purchaseBills = get('purchase-bills', []);
+  expenses = get('expenses', []);
+  wastage = get('wastage', []);
+  company = get('company', {name:'',address:'',mobile:'',openingCash:0});
+  counters = get('counters', {sale:1, purchase:1});
   document.getElementById('expDate').value = todayISO();
   document.getElementById('wDate').value = todayISO();
   renderCompanyBar();
@@ -1195,6 +1208,31 @@ function renderAll(){
   renderCashBook();
   renderReports();
   renderHome();
+}
+
+/* ================= PWA: install + service worker ================= */
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  document.getElementById('installBtn').classList.remove('hidden');
+});
+document.getElementById('installBtn').addEventListener('click', async ()=>{
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    document.getElementById('installBtn').classList.add('hidden');
+  }else{
+    alert('iPhone/iPad (Safari): கீழே உள்ள Share ஐகான் ➡ "Add to Home Screen" ஐ தேர்வு செய்யவும்.\n\nAndroid Chrome-ல் இந்த பட்டன் காணவில்லை என்றால்: மேலே வலது ⋮ menu ➡ "Install app" ஐ தேர்வு செய்யவும்.');
+  }
+});
+window.addEventListener('appinstalled', ()=> document.getElementById('installBtn').classList.add('hidden'));
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(err=> console.error('SW register failed', err));
+  });
 }
 
 loadAll();

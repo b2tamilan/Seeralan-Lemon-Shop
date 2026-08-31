@@ -1,0 +1,19 @@
+{
+  "name": "எலுமிச்சை தொழில் கணக்கு",
+  "short_name": "எலுமிச்சை கணக்கு",
+  "description": "எலுமிச்சை வாங்குதல், விற்பனை, இருப்பு, ரொக்கம் கணக்கு — முழு தமிழ் ERP",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#2F5233",
+  "theme_color": "#2F5233",
+  "lang": "ta",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
