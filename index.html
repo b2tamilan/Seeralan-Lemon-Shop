@@ -16,6 +16,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@500;600;700;800&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --paper:#F5F1DC; --paper-line:#DED5A8; --margin-red:#B23A1E;
@@ -174,6 +177,16 @@
 
   #pdfTemplate{position:fixed;left:-10000px;top:0;width:760px;background:#fff;}
 
+  .auth-gate{position:fixed;inset:0;background:var(--green-deep);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .auth-gate.hidden{display:none;}
+  .auth-box{background:var(--card-bg);border-radius:14px;padding:28px 26px;max-width:340px;width:100%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.3);}
+  .auth-box .auth-logo{font-size:40px;margin-bottom:6px;}
+  .auth-box h2{font-family:'Baloo Thambi 2',sans-serif;color:var(--green-deep);font-size:19px;margin:0 0 4px;}
+  .auth-box p{color:var(--ink-soft);font-size:12.5px;margin:0 0 16px;}
+  .auth-box input{width:100%;border:1px solid var(--paper-line);border-radius:8px;padding:11px 12px;font-size:14.5px;font-family:inherit;margin-bottom:10px;}
+  .auth-box button{width:100%;padding:12px;font-size:14.5px;border-radius:8px;}
+  .auth-error{color:var(--due);font-size:12.5px;margin-top:8px;min-height:16px;}
+
   @media (max-width:480px){
     .col-headers, .party-row{grid-template-columns:1fr 68px 68px 68px 14px;}
     header{padding:20px 14px 26px;} header h1{font-size:21px;}
@@ -184,6 +197,17 @@
 </style>
 </head>
 <body>
+<div class="auth-gate" id="authGate">
+  <div class="auth-box">
+    <div class="auth-logo">🍋</div>
+    <h2>எலுமிச்சை தொழில் கணக்கு</h2>
+    <p>கடை login-ஐ பயன்படுத்தி நுழையவும் (ஊழியர்கள் அனைவரும் இதே login-ஐ பயன்படுத்தலாம்)</p>
+    <input type="email" id="authEmail" placeholder="Email" autocomplete="username">
+    <input type="password" id="authPass" placeholder="கடவுச்சொல்" autocomplete="current-password">
+    <button class="btn" id="authLoginBtn">உள்நுழை</button>
+    <div class="auth-error" id="authError"></div>
+  </div>
+</div>
 <div class="wrap">
   <header>
     <h1>
@@ -365,38 +389,86 @@ function partyTotals(entries, debitType, creditType){
   return {debit, credit, balance: debit-credit};
 }
 
-/* ================= STORAGE (browser localStorage — this device only) ================= */
-const LS_PREFIX = 'lemonshop:';
-async function saveAll(){
-  try{
-    localStorage.setItem(LS_PREFIX+'customers', JSON.stringify(customers));
-    localStorage.setItem(LS_PREFIX+'invoices', JSON.stringify(invoices));
-    localStorage.setItem(LS_PREFIX+'suppliers', JSON.stringify(suppliers));
-    localStorage.setItem(LS_PREFIX+'purchase-bills', JSON.stringify(purchaseBills));
-    localStorage.setItem(LS_PREFIX+'expenses', JSON.stringify(expenses));
-    localStorage.setItem(LS_PREFIX+'wastage', JSON.stringify(wastage));
-    localStorage.setItem(LS_PREFIX+'company', JSON.stringify(company));
-    localStorage.setItem(LS_PREFIX+'counters', JSON.stringify(counters));
-  }catch(err){
-    console.error('save failed', err);
-    alert('தரவு சேமிப்பில் சிக்கல் — Storage நிறைந்திருக்கலாம். பேக்அப் எடுத்து, பழைய தரவை நீக்கி முயற்சிக்கவும்.');
-  }
-}
-async function loadAll(){
-  const get = (k, fallback) => { try{ const v = localStorage.getItem(LS_PREFIX+k); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } };
-  customers = get('customers', []);
-  invoices = get('invoices', []);
-  suppliers = get('suppliers', []);
-  purchaseBills = get('purchase-bills', []);
-  expenses = get('expenses', []);
-  wastage = get('wastage', []);
-  company = get('company', {name:'',address:'',mobile:'',openingCash:0});
-  counters = get('counters', {sale:1, purchase:1});
+/* ================= FIREBASE (shared cloud storage — all staff, real-time) ================= */
+// 1) Create a Firebase project (console.firebase.google.com) → Build → Firestore Database (start in production mode) → Build → Authentication → Email/Password (enable) → add ONE user (e.g. shop@yourshop.com) that all staff share.
+// 2) Project settings → General → "Your apps" → Web app → copy the config object below.
+const firebaseConfig = {
+  apiKey: "PASTE_YOUR_API_KEY",
+  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+  projectId: "PASTE_YOUR_PROJECT_ID",
+  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId: "PASTE_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+
+const SHOP_PATH = 'shops/main';
+function partyCollection(kind){ return db.collection(SHOP_PATH+'/'+(kind==='sale'?'customers':'suppliers')); }
+function docCollection(kind){ return db.collection(SHOP_PATH+'/'+(kind==='sale'?'invoices':'purchaseBills')); }
+function expenseCollection(){ return db.collection(SHOP_PATH+'/expenses'); }
+function wastageCollection(){ return db.collection(SHOP_PATH+'/wastage'); }
+function metaDocRef(){ return db.doc(SHOP_PATH); }
+function stripLocal(obj){ const copy = Object.assign({}, obj); delete copy._open; return copy; }
+
+async function fsSaveParty(kind, p){ try{ await partyCollection(kind).doc(p.id).set(stripLocal(p)); }catch(err){ console.error(err); alert('Sync பிழை — இணையம் சரிபார்க்கவும்.'); } }
+async function fsSaveDoc(kind, doc){ try{ await docCollection(kind).doc(doc.id).set(doc); }catch(err){ console.error(err); } }
+async function fsDeleteDoc(kind, id){ try{ await docCollection(kind).doc(id).delete(); }catch(err){ console.error(err); } }
+async function fsSaveExpense(e){ try{ await expenseCollection().doc(e.id).set(e); }catch(err){ console.error(err); } }
+async function fsDeleteExpense(id){ try{ await expenseCollection().doc(id).delete(); }catch(err){ console.error(err); } }
+async function fsSaveWastage(w){ try{ await wastageCollection().doc(w.id).set(w); }catch(err){ console.error(err); } }
+async function fsSaveMeta(){ try{ await metaDocRef().set({company, counters}, {merge:true}); }catch(err){ console.error(err); } }
+
+let fsUnsubscribers = [];
+function startListening(){
+  fsUnsubscribers.forEach(u=>u()); fsUnsubscribers = [];
+  fsUnsubscribers.push(partyCollection('sale').onSnapshot(snap=>{
+    const openMap = {}; customers.forEach(c=> openMap[c.id]=c._open);
+    customers = snap.docs.map(d=> Object.assign({}, d.data(), {id:d.id, _open: !!openMap[d.id]}));
+    renderAll();
+  }, err=> console.error(err)));
+  fsUnsubscribers.push(partyCollection('purchase').onSnapshot(snap=>{
+    const openMap = {}; suppliers.forEach(s=> openMap[s.id]=s._open);
+    suppliers = snap.docs.map(d=> Object.assign({}, d.data(), {id:d.id, _open: !!openMap[d.id]}));
+    renderAll();
+  }, err=> console.error(err)));
+  fsUnsubscribers.push(docCollection('sale').onSnapshot(snap=>{ invoices = snap.docs.map(d=>Object.assign({}, d.data(), {id:d.id})); renderAll(); }, err=> console.error(err)));
+  fsUnsubscribers.push(docCollection('purchase').onSnapshot(snap=>{ purchaseBills = snap.docs.map(d=>Object.assign({}, d.data(), {id:d.id})); renderAll(); }, err=> console.error(err)));
+  fsUnsubscribers.push(expenseCollection().onSnapshot(snap=>{ expenses = snap.docs.map(d=>Object.assign({}, d.data(), {id:d.id})); renderAll(); }, err=> console.error(err)));
+  fsUnsubscribers.push(wastageCollection().onSnapshot(snap=>{ wastage = snap.docs.map(d=>Object.assign({}, d.data(), {id:d.id})); renderAll(); }, err=> console.error(err)));
+  fsUnsubscribers.push(metaDocRef().onSnapshot(snap=>{
+    const data = snap.data() || {};
+    company = data.company || {name:'',address:'',mobile:'',openingCash:0};
+    counters = data.counters || {sale:1, purchase:1};
+    renderCompanyBar(); renderAll();
+  }, err=> console.error(err)));
   document.getElementById('expDate').value = todayISO();
   document.getElementById('wDate').value = todayISO();
-  renderCompanyBar();
-  renderAll();
 }
+
+auth.onAuthStateChanged(user=>{
+  const gate = document.getElementById('authGate');
+  if(user){
+    gate.classList.add('hidden');
+    startListening();
+  }else{
+    gate.classList.remove('hidden');
+    fsUnsubscribers.forEach(u=>u()); fsUnsubscribers=[];
+  }
+});
+document.getElementById('authLoginBtn').addEventListener('click', async ()=>{
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  const errEl = document.getElementById('authError');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Email மற்றும் கடவுச்சொல் நிரப்பவும்.'; return; }
+  try{ await auth.signInWithEmailAndPassword(email, pass); }
+  catch(err){ errEl.textContent = 'தவறான Email/கடவுச்சொல். மீண்டும் முயற்சிக்கவும்.'; }
+});
+document.getElementById('authPass').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('authLoginBtn').click(); });
+
 
 /* ================= COMPANY BAR ================= */
 function renderCompanyBar(){
@@ -422,7 +494,7 @@ document.getElementById('cf-save').addEventListener('click', async ()=>{
     mobile: document.getElementById('cf-mobile').value.trim(),
     openingCash: parseFloat(document.getElementById('cf-cash').value)||0
   };
-  await saveAll(); renderCompanyBar(); renderAll();
+  await fsSaveMeta(); renderCompanyBar(); renderAll();
   document.getElementById('companyForm').classList.remove('show');
 });
 
@@ -702,7 +774,7 @@ function bindPartyEvents(kind, listArea){
       p.address = document.getElementById('addr-'+id).value.trim();
       p.phone = document.getElementById('phone-'+id).value.trim();
       p._open = true;
-      saveAll(); renderParty(k);
+      fsSaveParty(k, p); renderParty(k);
     });
   });
 
@@ -736,7 +808,7 @@ function bindPartyEvents(kind, listArea){
       const p = CFG[k].entities().find(x=>x.id===id);
       p.entries.push({id:uid(), type:'payment', date: dateEl.value||todayISO(), amount, note:'', mode: modeEl ? modeEl.value : ''});
       p._open = true;
-      saveAll(); renderAll(); exportBackup();
+      fsSaveParty(k, p); renderAll(); exportBackup();
     });
   });
 
@@ -783,7 +855,9 @@ function bindPartyEvents(kind, listArea){
       if(idx>-1) docsArr.splice(idx,1);
       const entity = cfg.entities().find(x=>x.id===doc.entityId);
       if(entity) entity.entries = entity.entries.filter(e=>e.docId!==docId);
-      saveAll(); renderAll();
+      fsDeleteDoc(k, docId);
+      if(entity) fsSaveParty(k, entity);
+      renderAll();
     });
   });
   listArea.querySelectorAll('[data-statement]').forEach(btn=>{
@@ -796,7 +870,7 @@ function bindPartyEvents(kind, listArea){
       if(!confirm('இந்த பதிவை நீக்கலாமா?')) return;
       const p = CFG[k].entities().find(x=>x.id===pid);
       p.entries = p.entries.filter(e=>e.id!==eid);
-      saveAll(); renderAll();
+      fsSaveParty(k, p); renderAll();
     });
   });
 }
@@ -874,7 +948,7 @@ function generateDoc(kind, entityId){
       const entry = entity.entries.find(e=>e.docId===editingDocId);
       if(entry){ entry.date=date; entry.amount=total; }
       entity._open = true;
-      saveAll(); renderAll(); exportBackup();
+      fsSaveDoc(kind, doc); fsSaveParty(kind, entity); renderAll(); exportBackup();
       snapshotToPDF(buildDocHTML(kind, doc, entity), `${kind}-${String(doc.number).padStart(4,'0')}-${entity.name.replace(/\s+/g,'-')}.pdf`, entity);
     }
     return;
@@ -890,7 +964,7 @@ function generateDoc(kind, entityId){
   });
   entity._open = true;
 
-  saveAll(); renderAll(); exportBackup();
+  fsSaveDoc(kind, doc); fsSaveParty(kind, entity); fsSaveMeta(); renderAll(); exportBackup();
   snapshotToPDF(buildDocHTML(kind, doc, entity), `${kind}-${String(doc.number).padStart(4,'0')}-${entity.name.replace(/\s+/g,'-')}.pdf`, entity);
 }
 
@@ -996,7 +1070,7 @@ document.getElementById('addCustomerBtn').addEventListener('click', ()=>{
   const name = n.value.trim(); if(!name){ n.focus(); return; }
   customers.push({id:uid(), name, address:a.value.trim(), phone:ph.value.trim(), entries:[], _open:true});
   n.value=''; a.value=''; ph.value='';
-  saveAll(); renderAll();
+  fsSaveParty('sale', customers[customers.length-1]); renderAll();
 });
 document.getElementById('newCustName').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('addCustomerBtn').click(); });
 
@@ -1005,7 +1079,7 @@ document.getElementById('addSupplierBtn').addEventListener('click', ()=>{
   const name = n.value.trim(); if(!name){ n.focus(); return; }
   suppliers.push({id:uid(), name, address:a.value.trim(), phone:ph.value.trim(), entries:[], _open:true});
   n.value=''; a.value=''; ph.value='';
-  saveAll(); renderAll();
+  fsSaveParty('purchase', suppliers[suppliers.length-1]); renderAll();
 });
 document.getElementById('newSupName').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('addSupplierBtn').click(); });
 
@@ -1055,7 +1129,7 @@ function renderCashBook(){
     btn.addEventListener('click', ()=>{
       if(!confirm('இந்த செலவை நீக்கலாமா?')) return;
       expenses = expenses.filter(e=>e.id!==btn.getAttribute('data-del-exp'));
-      saveAll(); renderAll();
+      fsDeleteExpense(btn.getAttribute('data-del-exp')); renderAll();
     });
   });
 }
@@ -1082,7 +1156,7 @@ document.getElementById('expSaveBtn').addEventListener('click', ()=>{
   if(!amt || amt<=0){ document.getElementById('expAmt').focus(); return; }
   expenses.push({id:uid(), date:document.getElementById('expDate').value||todayISO(), category:cat, amount:amt, note:''});
   document.getElementById('expenseForm').classList.remove('show');
-  saveAll(); renderAll();
+  fsSaveExpense(expenses[expenses.length-1]); renderAll();
 });
 
 /* ================= REPORTS ================= */
@@ -1125,7 +1199,7 @@ document.getElementById('wSaveBtn').addEventListener('click', ()=>{
   wastage.push({id:uid(), date, product, quality, weight, unit, note});
   document.getElementById('wWeight').value=''; document.getElementById('wNote').value='';
   document.getElementById('wastageForm').classList.remove('show');
-  saveAll(); renderAll();
+  fsSaveWastage(wastage[wastage.length-1]); renderAll();
 });
 document.getElementById('ledgerPdfBtn').addEventListener('click', ()=>{
   const html = `<div style="font-family:'Noto Sans Tamil','Noto Sans',sans-serif;color:#20201A;padding:40px;width:680px;background:#fff;">
@@ -1173,11 +1247,16 @@ function renderHome(){
 }
 
 /* ================= BACKUP ================= */
+function timestampForFilename(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
 function exportBackup(){
   const data = {exportedAt:new Date().toISOString(), customers, invoices, suppliers, purchaseBills, expenses, wastage, company, counters};
   const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download = `lemon-erp-backup-${todayISO()}.json`;
+  const a = document.createElement('a'); a.href=url; a.download = `lemon-erp-backup-${timestampForFilename()}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url), 4000);
 }
@@ -1189,15 +1268,50 @@ document.getElementById('backupFileInput').addEventListener('change', async ev=>
     const text = await file.text();
     const data = JSON.parse(text);
     if(!Array.isArray(data.customers)) throw new Error('invalid');
-    if(!confirm('பேக்அப் கோப்பை ஏற்றினால், தற்போதுள்ள தரவு மாற்றப்படும். தொடரவா?')) return;
-    customers = data.customers||[]; invoices = data.invoices||[];
-    suppliers = data.suppliers||[]; purchaseBills = data.purchaseBills||[];
-    expenses = data.expenses||[]; wastage = data.wastage||[];
-    company = data.company||{name:'',address:'',mobile:'',openingCash:0};
-    counters = data.counters||{sale:1,purchase:1};
-    await saveAll(); renderCompanyBar(); renderAll();
-    alert('பேக்அப் வெற்றிகரமாக மீட்டமைக்கப்பட்டது.');
-  }catch(err){ alert('இந்த கோப்பை படிக்க முடியவில்லை.'); }
+    if(!confirm('பேக்அப் கோப்பை ஏற்றினால், Cloud-ல் உள்ள தற்போதைய தரவு அனைத்தும் மாற்றப்படும் (எல்லா ஊழியர்களுக்கும்). தொடரவா?')) return;
+
+    const newCustomers = data.customers||[];
+    const newInvoices = data.invoices||[];
+    const newSuppliers = data.suppliers||[];
+    const newPurchaseBills = data.purchaseBills||[];
+    const newExpenses = data.expenses||[];
+    const newWastage = data.wastage||[];
+    const newCompany = data.company||{name:'',address:'',mobile:'',openingCash:0};
+    const newCounters = data.counters||{sale:1,purchase:1};
+
+    async function clearCollection(col){
+      const snap = await col.get();
+      const batch = db.batch();
+      snap.docs.forEach(d=> batch.delete(d.ref));
+      if(snap.docs.length) await batch.commit();
+    }
+    async function writeAll(col, items){
+      const chunks = [];
+      for(let i=0;i<items.length;i+=400) chunks.push(items.slice(i,i+400));
+      for(const chunk of chunks){
+        const batch = db.batch();
+        chunk.forEach(item=> batch.set(col.doc(item.id), stripLocal(item)));
+        await batch.commit();
+      }
+    }
+
+    await clearCollection(partyCollection('sale'));
+    await clearCollection(partyCollection('purchase'));
+    await clearCollection(docCollection('sale'));
+    await clearCollection(docCollection('purchase'));
+    await clearCollection(expenseCollection());
+    await clearCollection(wastageCollection());
+
+    await writeAll(partyCollection('sale'), newCustomers);
+    await writeAll(partyCollection('purchase'), newSuppliers);
+    await writeAll(docCollection('sale'), newInvoices);
+    await writeAll(docCollection('purchase'), newPurchaseBills);
+    await writeAll(expenseCollection(), newExpenses);
+    await writeAll(wastageCollection(), newWastage);
+    await metaDocRef().set({company:newCompany, counters:newCounters});
+
+    alert('பேக்அப் Cloud-க்கு வெற்றிகரமாக மீட்டமைக்கப்பட்டது. அனைத்து phone-களிலும் சிறிது நேரத்தில் புதுப்பிக்கப்படும்.');
+  }catch(err){ console.error(err); alert('இந்த கோப்பை ஏற்ற முடியவில்லை. இணையம் சரிபார்க்கவும்.'); }
   ev.target.value='';
 });
 
@@ -1235,7 +1349,6 @@ if('serviceWorker' in navigator){
   });
 }
 
-loadAll();
 </script>
 </body>
 </html>
